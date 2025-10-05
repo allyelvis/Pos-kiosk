@@ -35,7 +35,7 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ order, onNewSale }) => {
                         <div key={item.id} className="flex justify-between text-sm mb-1">
                             <div className="flex-grow">
                                 <p>{item.name}</p>
-                                <p className="pl-2 text-xs text-gray-600">{item.quantity} @ {formatCurrency(item.price)}</p>
+                                <p className="pl-2 text-xs text-gray-600">{item.quantity} @ {formatCurrency(item.price)} / {item.unit}</p>
                             </div>
                             <p className="flex-shrink-0">{formatCurrency(item.quantity * item.price)}</p>
                         </div>

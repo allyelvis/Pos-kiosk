@@ -17,6 +17,7 @@ const ProductEditModal: React.FC<ProductEditModalProps> = ({ product, categories
         sku: '',
         stock: 0,
         imageUrl: '',
+        unit: 'each',
     });
 
     useEffect(() => {
@@ -28,11 +29,20 @@ const ProductEditModal: React.FC<ProductEditModalProps> = ({ product, categories
                 sku: product.sku,
                 stock: product.stock,
                 imageUrl: product.imageUrl,
+                unit: product.unit || 'each',
             });
         } else {
-             // Set default category if available
+            // Reset form for new product
             const defaultCategory = categories.find(c => c.id !== 'all');
-            setFormData(prev => ({ ...prev, categoryId: defaultCategory?.id || '' }));
+            setFormData({
+                name: '',
+                categoryId: defaultCategory?.id || '',
+                price: 0,
+                sku: '',
+                stock: 0,
+                imageUrl: '',
+                unit: 'each',
+            });
         }
     }, [product, categories]);
     
@@ -49,8 +59,8 @@ const ProductEditModal: React.FC<ProductEditModalProps> = ({ product, categories
         e.preventDefault();
         
         // Validation
-        if (!formData.name || !formData.categoryId || formData.price <= 0 || formData.stock < 0) {
-            alert('Please fill in all required fields. Price must be > 0 and Stock must be >= 0.');
+        if (!formData.name || !formData.categoryId || formData.price <= 0 || formData.stock < 0 || !formData.unit) {
+            alert('Please fill in all required fields. Price must be > 0, Stock must be >= 0, and Unit cannot be empty.');
             return;
         }
 
@@ -94,6 +104,10 @@ const ProductEditModal: React.FC<ProductEditModalProps> = ({ product, categories
                         <div>
                              <label htmlFor="stock" className="block text-sm font-medium text-gray-300 mb-1">Stock Quantity</label>
                             <input type="number" name="stock" id="stock" value={formData.stock} onChange={handleChange} required min="0" step="1" className="w-full bg-gray-900 border-gray-700 rounded-md py-2 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500"/>
+                        </div>
+                        <div className="col-span-2">
+                            <label htmlFor="unit" className="block text-sm font-medium text-gray-300 mb-1">Unit of Measurement</label>
+                            <input type="text" name="unit" id="unit" value={formData.unit} onChange={handleChange} required placeholder="e.g., each, kg, bag" className="w-full bg-gray-900 border-gray-700 rounded-md py-2 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500"/>
                         </div>
                         <div className="col-span-2">
                             <label className="block text-sm font-medium text-gray-300 mb-1">Product Image</label>

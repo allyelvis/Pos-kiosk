@@ -30,7 +30,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }) => {
             <div className="p-2">
                 <h3 className="text-sm font-semibold text-white truncate">{product.name}</h3>
                 <p className="text-xs text-gray-400">
-                    ${product.price.toFixed(2)}
+                    ${product.price.toFixed(2)} / {product.unit}
                 </p>
                  <p className={`text-xs ${isLowStock ? 'text-yellow-400 font-semibold' : 'text-gray-500'}`}>
                     {product.stock} in stock

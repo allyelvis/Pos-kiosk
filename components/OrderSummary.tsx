@@ -64,7 +64,7 @@ const OrderItemRow: React.FC<{
         <div className="flex items-center justify-between mb-3 bg-gray-700 p-2 rounded-md">
             <div className="flex-grow w-0"> {/* Add w-0 to help truncation */}
                 <p className="font-semibold truncate" title={item.name}>{item.name}</p>
-                <p className="text-sm text-gray-400">{formatCurrency(item.price)}</p>
+                <p className="text-sm text-gray-400">{formatCurrency(item.price)} / {item.unit}</p>
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
                 <button 

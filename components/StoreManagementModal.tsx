@@ -96,12 +96,13 @@ const StoreManagementModal: React.FC<StoreManagementModalProps> = (props) => {
                                 </div>
                                 <div className="space-y-2">
                                     {filteredProducts.map(p => (
-                                        <div key={p.id} className="grid grid-cols-6 gap-4 items-center p-2 bg-gray-700 rounded-md">
+                                        <div key={p.id} className="grid grid-cols-7 gap-4 items-center p-2 bg-gray-700 rounded-md">
                                             <img src={p.imageUrl} alt={p.name} className="w-10 h-10 object-cover rounded"/>
                                             <span className="font-semibold col-span-2 truncate">{p.name}</span>
                                             <span className="text-gray-400">${p.price.toFixed(2)}</span>
+                                            <span className="text-gray-400 capitalize">{p.unit}</span>
                                             <span className="text-gray-400">{p.stock} in stock</span>
-                                            <div className="flex justify-end gap-2">
+                                            <div className="flex justify-end gap-2 col-span-1">
                                                 <button onClick={() => handleEditProduct(p)} className="p-2 text-gray-300 hover:text-white"><PencilIcon className="w-5 h-5"/></button>
                                                 <button onClick={() => handleConfirmDeleteProduct(p)} className="p-2 text-red-400 hover:text-red-300"><TrashIcon className="w-5 h-5"/></button>
                                             </div>

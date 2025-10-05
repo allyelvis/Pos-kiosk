@@ -13,6 +13,7 @@ export interface Product {
   sku: string;
   stock: number;
   imageUrl: string;
+  unit: string;
 }
 
 export interface OrderItem extends Product {

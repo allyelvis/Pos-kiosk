@@ -96,7 +96,7 @@ const OrderDetailsModal: React.FC<OrderDetailsModalProps> = (props) => {
                                 <div key={item.id} className="flex justify-between items-center text-sm p-2 bg-gray-700 rounded-md">
                                     <div>
                                         <p className="font-semibold">{item.name}</p>
-                                        <p className="text-gray-400">{item.quantity} x ${item.price.toFixed(2)}</p>
+                                        <p className="text-gray-400">{item.quantity} x ${item.price.toFixed(2)} / {item.unit}</p>
                                     </div>
                                     <p className="font-semibold">${(item.quantity * item.price).toFixed(2)}</p>
                                 </div>
