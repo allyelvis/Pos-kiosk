@@ -1,0 +1,5 @@
+{
+  "name": "Modular Commerce POS",
+  "description": "A Point of Sale (POS)/Kiosk application for a modular commerce platform, designed for fast in-person checkouts, inventory tracking, and order management.",
+  "requestFramePermissions": []
+}
