@@ -36,12 +36,14 @@ const OrderItemRow: React.FC<{
     };
 
     const handleInputBlur = () => {
-        let newQuantity = parseInt(inputValue, 10);
-        // If input is empty or invalid, treat as 0 to trigger removal
-        if (isNaN(newQuantity) || newQuantity <= 0) {
-            newQuantity = 0;
+        const parsedQuantity = parseInt(inputValue, 10);
+        // If the input is empty/invalid (NaN) or zero, remove the item by setting quantity to 0.
+        // Otherwise, update with the parsed quantity. The parent component will handle stock limits.
+        if (isNaN(parsedQuantity) || parsedQuantity <= 0) {
+            onUpdateQuantity(item.id, 0);
+        } else {
+            onUpdateQuantity(item.id, parsedQuantity);
         }
-        onUpdateQuantity(item.id, newQuantity);
     };
 
     const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
