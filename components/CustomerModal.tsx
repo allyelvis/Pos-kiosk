@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import type { Customer } from '../types';
 import { XIcon, SearchIcon } from './icons';
@@ -53,7 +52,12 @@ const CustomerModal: React.FC<CustomerModalProps> = ({ customers, onSelectCustom
                                     <p className="font-semibold">{customer.name}</p>
                                     <p className="text-sm text-gray-400">{customer.email}</p>
                                 </div>
-                                <div>
+                                <div className="flex items-center gap-2">
+                                    {customer.isTaxExempt && (
+                                        <span className="text-xs font-bold bg-blue-500 text-white px-2 py-0.5 rounded-full">
+                                            TAX EXEMPT
+                                        </span>
+                                    )}
                                     <span className="text-sm text-yellow-400">{customer.loyaltyPoints} pts</span>
                                 </div>
                             </div>

@@ -1,6 +1,12 @@
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
-import { CATEGORIES as MOCK_CATEGORIES, PRODUCTS as MOCK_PRODUCTS, TAX_RATE, CUSTOMERS } from './constants';
-import type { Product, OrderItem, Customer, CompletedOrder, Category } from './types';
+import React, { useState, useMemo } from 'react';
+
+// Import types
+import type { Product, Category, Customer, OrderItem, CompletedOrder } from './types';
+
+// Import data constants
+import { PRODUCTS as INITIAL_PRODUCTS, CATEGORIES as INITIAL_CATEGORIES, CUSTOMERS as INITIAL_CUSTOMERS, TAX_RATE } from './constants';
+
+// Import components
 import Header from './components/Header';
 import CategoryTabs from './components/CategoryTabs';
 import ProductGrid from './components/ProductGrid';
@@ -11,145 +17,88 @@ import ReceiptModal from './components/ReceiptModal';
 import OrderHistoryModal from './components/OrderHistoryModal';
 import OrderDetailsModal from './components/OrderDetailsModal';
 import StoreManagementModal from './components/StoreManagementModal';
+import DashboardModal from './components/DashboardModal';
+
+type ModalType = 'customer' | 'payment' | 'receipt' | 'history' | 'details' | 'dashboard' | 'store' | null;
 
 const App: React.FC = () => {
-    const [products, setProducts] = useState<Product[]>([]);
-    const [categories, setCategories] = useState<Category[]>([]);
-    const [activeCategoryId, setActiveCategoryId] = useState<string>('all');
-    const [searchTerm, setSearchTerm] = useState<string>('');
-    const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
-    const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
-    const [showCustomerModal, setShowCustomerModal] = useState<boolean>(false);
-    const [showPaymentModal, setShowPaymentModal] = useState<boolean>(false);
-    const [showReceiptModal, setShowReceiptModal] = useState<boolean>(false);
-    const [completedOrder, setCompletedOrder] = useState<CompletedOrder | null>(null);
-    const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
-
-    // --- Order & Store Management State ---
+    // Data state
+    const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
+    const [categories, setCategories] = useState<Category[]>(INITIAL_CATEGORIES);
+    const [customers, setCustomers] = useState<Customer[]>(INITIAL_CUSTOMERS);
     const [completedOrders, setCompletedOrders] = useState<CompletedOrder[]>([]);
-    const [showOrderHistoryModal, setShowOrderHistoryModal] = useState<boolean>(false);
+
+    // Current order state
+    const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
+    const [currentCustomer, setCurrentCustomer] = useState<Customer | null>(null);
+    const [activeCategoryId, setActiveCategoryId] = useState<string>('all');
+
+    // UI State
+    const [activeModal, setActiveModal] = useState<ModalType>(null);
     const [selectedOrderForDetails, setSelectedOrderForDetails] = useState<CompletedOrder | null>(null);
-    const [isTransferCustomerFlow, setIsTransferCustomerFlow] = useState<boolean>(false);
-    const [showStoreModal, setShowStoreModal] = useState<boolean>(false);
-
-
-    // --- Data Persistence and Offline Mode ---
-    useEffect(() => {
-        const handleOnline = () => setIsOnline(true);
-        const handleOffline = () => setIsOnline(false);
-        window.addEventListener('online', handleOnline);
-        window.addEventListener('offline', handleOffline);
-
-        // Load data from localStorage or fall back to mock data
-        const loadData = <T,>(key: string, mockData: T): T => {
-            const cached = localStorage.getItem(key);
-            if (cached) return JSON.parse(cached);
-            localStorage.setItem(key, JSON.stringify(mockData));
-            return mockData;
-        };
-        
-        setProducts(loadData<Product[]>('products', MOCK_PRODUCTS));
-        setCategories(loadData<Category[]>('categories', MOCK_CATEGORIES));
-        setCompletedOrders(loadData<CompletedOrder[]>('completedOrders', []));
-
-        const cachedOrder = localStorage.getItem('currentOrder');
-        if (cachedOrder) {
-            const { items, customer } = JSON.parse(cachedOrder);
-            setOrderItems(items || []);
-            setSelectedCustomer(customer || null);
-        }
-
-        return () => {
-            window.removeEventListener('online', handleOnline);
-            window.removeEventListener('offline', handleOffline);
-        };
-    }, []);
-
-    // Persist changes to localStorage
-    useEffect(() => { localStorage.setItem('currentOrder', JSON.stringify({ items: orderItems, customer: selectedCustomer })); }, [orderItems, selectedCustomer]);
-    useEffect(() => { localStorage.setItem('completedOrders', JSON.stringify(completedOrders)); }, [completedOrders]);
-    useEffect(() => { localStorage.setItem('products', JSON.stringify(products)); }, [products]);
-    useEffect(() => { localStorage.setItem('categories', JSON.stringify(categories)); }, [categories]);
-
-    const syncOfflineOrders = useCallback(async () => {
-        const offlineQueue = JSON.parse(localStorage.getItem('offlineOrderQueue') || '[]');
-        if (offlineQueue.length > 0) {
-            console.log(`Syncing ${offlineQueue.length} offline orders...`);
-            try {
-                await new Promise(resolve => setTimeout(resolve, 1500));
-                console.log('Sync successful!', offlineQueue);
-                setCompletedOrders(prev => [...offlineQueue, ...prev]);
-                localStorage.removeItem('offlineOrderQueue');
-            } catch (error) {
-                console.error('Failed to sync offline orders:', error);
-            }
-        }
-    }, []);
-
-    useEffect(() => {
-        if (isOnline) {
-            syncOfflineOrders();
-        }
-    }, [isOnline, syncOfflineOrders]);
     
-    // --- Basic Handlers ---
-    const handleSelectCategory = useCallback((categoryId: string) => setActiveCategoryId(categoryId), []);
-    const handleSearch = useCallback((term: string) => setSearchTerm(term), []);
-    const handleClearCart = useCallback(() => {
-        setOrderItems([]);
-        setSelectedCustomer(null);
-    }, []);
+    // Derived state for current order
+    const subtotal = useMemo(() => orderItems.reduce((sum, item) => sum + item.price * item.quantity, 0), [orderItems]);
+    const tax = useMemo(() => {
+        if (currentCustomer?.isTaxExempt) {
+            return 0;
+        }
+        return subtotal * TAX_RATE;
+    }, [subtotal, currentCustomer]);
+    const total = useMemo(() => subtotal + tax, [subtotal, tax]);
 
-    const handleAddToCart = useCallback((product: Product) => {
+    const filteredProducts = useMemo(() => {
+        if (activeCategoryId === 'all') return products;
+        return products.filter(p => p.categoryId === activeCategoryId);
+    }, [products, activeCategoryId]);
+
+    // Handlers
+    const handleAddToCart = (product: Product) => {
         setOrderItems(prevItems => {
             const existingItem = prevItems.find(item => item.id === product.id);
             if (existingItem) {
-                if (existingItem.quantity < product.stock) {
-                    return prevItems.map(item =>
-                        item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
-                    );
-                }
-                return prevItems;
+                const newQuantity = Math.min(product.stock, existingItem.quantity + 1);
+                return prevItems.map(item =>
+                    item.id === product.id ? { ...item, quantity: newQuantity } : item
+                );
             }
             if (product.stock > 0) {
-                return [...prevItems, { ...product, quantity: 1 }];
+              return [...prevItems, { ...product, quantity: 1 }];
             }
             return prevItems;
         });
-    }, []);
+    };
 
-    const handleUpdateQuantity = useCallback((productId: string, newQuantity: number) => {
-        setOrderItems(prevItems => {
-            const productInCart = prevItems.find(item => item.id === productId);
-            if (!productInCart) return prevItems;
+    const handleUpdateQuantity = (productId: string, newQuantity: number) => {
+        if (newQuantity <= 0) {
+            setOrderItems(prev => prev.filter(item => item.id !== productId));
+            return;
+        }
 
-            if (newQuantity <= 0) {
-                return prevItems.filter(item => item.id !== productId);
+        setOrderItems(prev => prev.map(item => {
+            if (item.id === productId) {
+                const cappedQuantity = Math.min(item.stock, newQuantity);
+                return { ...item, quantity: cappedQuantity };
             }
-             if (newQuantity > productInCart.stock) {
-                return prevItems.map(item =>
-                    item.id === productId ? { ...item, quantity: productInCart.stock } : item
-                );
-            }
-            return prevItems.map(item =>
-                item.id === productId ? { ...item, quantity: newQuantity } : item
-            );
-        });
-    }, []);
+            return item;
+        }));
+    };
 
-    const { subtotal, tax, total } = useMemo(() => {
-        const subtotal = orderItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
-        const tax = subtotal * TAX_RATE;
-        const total = subtotal + tax;
-        return { subtotal, tax, total };
-    }, [orderItems]);
+    const handleClearCart = () => {
+        setOrderItems([]);
+        setCurrentCustomer(null);
+    };
+    
+    const handleSelectCustomer = (customer: Customer) => {
+        setCurrentCustomer(customer);
+        setActiveModal(null);
+    };
 
-    // --- Order Completion ---
-    const handleCompletePayment = useCallback((paymentMethod: string) => {
-        const order: CompletedOrder = {
-            id: `ORD-${Date.now()}`,
+    const handleCompletePayment = (paymentMethod: string) => {
+        const newOrder: CompletedOrder = {
+            id: `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 5).toUpperCase()}`,
             items: orderItems,
-            customer: selectedCustomer,
+            customer: currentCustomer,
             subtotal,
             tax,
             total,
@@ -158,213 +107,220 @@ const App: React.FC = () => {
             status: 'completed',
         };
 
-        setProducts(currentProducts => {
-            const newProducts = [...currentProducts];
-            order.items.forEach(item => {
-                const productIndex = newProducts.findIndex(p => p.id === item.id);
-                if (productIndex !== -1) {
-                    newProducts[productIndex].stock -= item.quantity;
-                }
-            });
-            return newProducts;
+        // Update product stock
+        const updatedProducts = products.map(p => {
+            const itemInOrder = orderItems.find(item => item.id === p.id);
+            if (itemInOrder) {
+                return { ...p, stock: p.stock - itemInOrder.quantity };
+            }
+            return p;
         });
+        setProducts(updatedProducts);
 
-        if (!isOnline) {
-            const offlineQueue = JSON.parse(localStorage.getItem('offlineOrderQueue') || '[]');
-            offlineQueue.push(order);
-            localStorage.setItem('offlineOrderQueue', JSON.stringify(offlineQueue));
-        } else {
-            setCompletedOrders(prev => [order, ...prev]);
-        }
+        setCompletedOrders(prev => [newOrder, ...prev]);
+        setSelectedOrderForDetails(newOrder); // To show receipt for this new order
+        setActiveModal('receipt');
+    };
 
-        setCompletedOrder(order);
-        setShowPaymentModal(false);
-        setShowReceiptModal(true);
+    const handleNewSale = () => {
         handleClearCart();
-        localStorage.removeItem('currentOrder');
-    }, [orderItems, selectedCustomer, subtotal, tax, total, isOnline, handleClearCart]);
+        setActiveModal(null);
+        setSelectedOrderForDetails(null);
+    };
+    
+    const handleShowOrderDetails = (order: CompletedOrder) => {
+        setSelectedOrderForDetails(order);
+        setActiveModal('details');
+    };
 
-    const handleNewSale = useCallback(() => {
-        setShowReceiptModal(false);
-        setCompletedOrder(null);
-    }, []);
+    const handleCancelOrder = (orderId: string) => {
+        const orderToCancel = completedOrders.find(o => o.id === orderId);
+        if (!orderToCancel || orderToCancel.status === 'canceled') return;
 
-    // --- Order Management Handlers ---
-    const handleCancelOrder = useCallback((orderId: string) => {
-        let orderToCancel: CompletedOrder | undefined;
-        setCompletedOrders(prevOrders => prevOrders.map(o => {
-            if (o.id === orderId && o.status === 'completed') {
-                orderToCancel = o;
-                return { ...o, status: 'canceled' };
+        setCompletedOrders(prevOrders => prevOrders.map(o => o.id === orderId ? {...o, status: 'canceled'} : o));
+
+        // Return stock
+        const updatedProducts = products.map(p => {
+            const itemInOrder = orderToCancel.items.find(item => item.id === p.id);
+            if (itemInOrder) {
+                return { ...p, stock: p.stock + itemInOrder.quantity };
             }
-            return o;
-        }));
-
-        if (orderToCancel) {
-            setProducts(currentProducts => {
-                const newProducts = [...currentProducts];
-                orderToCancel!.items.forEach(item => {
-                    const productIndex = newProducts.findIndex(p => p.id === item.id);
-                    if (productIndex !== -1) {
-                        newProducts[productIndex].stock += item.quantity;
-                    }
-                });
-                return newProducts;
-            });
+            return p;
+        });
+        setProducts(updatedProducts);
+        
+        setActiveModal(null);
+    };
+    
+    const handleDeleteOrder = (orderId: string) => {
+        if (window.confirm("Are you sure you want to permanently delete this order record? This cannot be undone.")) {
+            setCompletedOrders(prev => prev.filter(o => o.id !== orderId));
+            setActiveModal(null);
         }
-        setSelectedOrderForDetails(null);
-    }, []);
+    };
 
-    const handleDeleteOrder = useCallback((orderId: string) => {
-        setCompletedOrders(prev => prev.filter(o => o.id !== orderId));
-        setSelectedOrderForDetails(null);
-    }, []);
-
-    const handleEditOrder = useCallback((orderToEdit: CompletedOrder) => {
-        handleCancelOrder(orderToEdit.id);
+    const handleEditOrder = (orderToEdit: CompletedOrder) => {
+        // for simplicity, we'll just load it into the current order view
         setOrderItems(orderToEdit.items);
-        setSelectedCustomer(orderToEdit.customer);
-        setSelectedOrderForDetails(null);
-        setShowOrderHistoryModal(false);
-    }, [handleCancelOrder]);
-    
-    const handleTransferCustomerRequest = useCallback(() => {
-        setIsTransferCustomerFlow(true);
-        setShowCustomerModal(true);
-    }, []);
-    
-    const handleSelectCustomer = useCallback((customer: Customer) => {
-        if (isTransferCustomerFlow && selectedOrderForDetails) {
-            setCompletedOrders(prevOrders =>
-                prevOrders.map(o =>
-                    o.id === selectedOrderForDetails.id ? { ...o, customer } : o
-                )
-            );
-            setSelectedOrderForDetails(prev => prev ? { ...prev, customer } : null);
-            setIsTransferCustomerFlow(false);
-        } else {
-            setSelectedCustomer(customer);
-        }
-        setShowCustomerModal(false);
-    }, [isTransferCustomerFlow, selectedOrderForDetails]);
-    
-    const handleSplitOrder = useCallback((originalOrder: CompletedOrder, itemsToSplit: OrderItem[]) => {
-        if (itemsToSplit.length === 0) return;
+        setCurrentCustomer(orderToEdit.customer);
+        // We'll also mark the original as canceled to avoid duplication
+        handleCancelOrder(orderToEdit.id);
+        setActiveModal(null);
+    };
 
-        const recalculateTotals = (items: OrderItem[]) => {
-            const subtotal = items.reduce((acc, item) => acc + item.price * item.quantity, 0);
-            const tax = subtotal * TAX_RATE;
-            const total = subtotal + tax;
-            return { subtotal, tax, total };
+    const handleSplitOrder = (originalOrder: CompletedOrder, itemsToSplit: OrderItem[]) => {
+        // Create new order
+        const subtotalSplit = itemsToSplit.reduce((sum, item) => sum + item.price * item.quantity, 0);
+        const taxSplit = subtotalSplit * TAX_RATE;
+        const totalSplit = subtotalSplit + taxSplit;
+        const newSplitOrder: CompletedOrder = {
+             id: `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 5).toUpperCase()}`,
+             items: itemsToSplit,
+             customer: originalOrder.customer,
+             subtotal: subtotalSplit,
+             tax: taxSplit,
+             total: totalSplit,
+             paymentMethod: originalOrder.paymentMethod,
+             timestamp: new Date().toISOString(),
+             status: 'completed'
         };
 
-        const newOrderTotals = recalculateTotals(itemsToSplit);
-        const newOrder: CompletedOrder = {
-            id: `ORD-${Date.now()}`,
-            items: itemsToSplit,
-            customer: originalOrder.customer,
-            ...newOrderTotals,
-            paymentMethod: 'Split',
-            timestamp: new Date().toISOString(),
-            status: 'completed',
-        };
-
-        const updatedOriginalItems = originalOrder.items.map(originalItem => {
-            const splitItem = itemsToSplit.find(si => si.id === originalItem.id);
-            if (splitItem) {
-                return { ...originalItem, quantity: originalItem.quantity - splitItem.quantity };
+        // Update original order
+        const updatedOriginalOrderItems = originalOrder.items.map(item => {
+            const splitItem = itemsToSplit.find(si => si.id === item.id);
+            if(splitItem) {
+                return { ...item, quantity: item.quantity - splitItem.quantity };
             }
-            return originalItem;
+            return item;
         }).filter(item => item.quantity > 0);
+        
+        const subtotalOrig = updatedOriginalOrderItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+        const taxOrig = subtotalOrig * TAX_RATE;
+        const totalOrig = subtotalOrig + taxOrig;
 
-        const updatedOriginalTotals = recalculateTotals(updatedOriginalItems);
         const updatedOriginalOrder: CompletedOrder = {
             ...originalOrder,
-            items: updatedOriginalItems,
-            ...updatedOriginalTotals,
+            items: updatedOriginalOrderItems,
+            subtotal: subtotalOrig,
+            tax: taxOrig,
+            total: totalOrig,
         };
-
-        setCompletedOrders(prevOrders => {
-            const otherOrders = prevOrders.filter(o => o.id !== originalOrder.id);
-            return [newOrder, updatedOriginalOrder, ...otherOrders];
-        });
         
-        setSelectedOrderForDetails(updatedOriginalOrder);
-    }, []);
-    
-    // --- Store Management Handlers ---
-    const handleAddOrUpdateProduct = useCallback((productData: Product) => {
+        setCompletedOrders(prev => [newSplitOrder, ...prev.map(o => o.id === originalOrder.id ? updatedOriginalOrder : o)]);
+        setSelectedOrderForDetails(newSplitOrder); // show details of newly created split order
+    };
+
+    const handleAddOrUpdateProduct = (product: Product) => {
         setProducts(prev => {
-            const exists = prev.some(p => p.id === productData.id);
-            if (exists) {
-                return prev.map(p => p.id === productData.id ? productData : p);
+            const exists = prev.some(p => p.id === product.id);
+            if(exists) {
+                return prev.map(p => p.id === product.id ? product : p);
             }
-            return [productData, ...prev];
+            return [...prev, product];
         });
-    }, []);
-
-    const handleDeleteProduct = useCallback((productId: string) => {
+    };
+    
+    const handleDeleteProduct = (productId: string) => {
         setProducts(prev => prev.filter(p => p.id !== productId));
-    }, []);
+    };
 
-    const handleAddOrUpdateCategory = useCallback((categoryData: Category) => {
+    const handleAddOrUpdateCategory = (category: Category) => {
         setCategories(prev => {
-            const exists = prev.some(c => c.id === categoryData.id);
+            const exists = prev.some(c => c.id === category.id);
             if (exists) {
-                return prev.map(c => c.id === categoryData.id ? categoryData : c);
+                return prev.map(c => c.id === category.id ? category : c);
             }
-            // Ensure 'All' category remains first if it exists
-            const allCategory = prev.find(c => c.id === 'all');
-            const otherCategories = prev.filter(c => c.id !== 'all');
-            const newCategories = [categoryData, ...otherCategories];
-            if(allCategory) return [allCategory, ...newCategories];
-            return newCategories;
+            return [...prev, category];
         });
-    }, []);
+    };
 
-    const handleDeleteCategory = useCallback((categoryId: string) => {
-        const isCategoryInUse = products.some(p => p.categoryId === categoryId);
-        if (isCategoryInUse) {
-            alert("Cannot delete category: it is currently assigned to one or more products.");
-            return;
-        }
-        if (categoryId === 'all') {
-            alert("Cannot delete the 'All' category.");
+    const handleDeleteCategory = (categoryId: string) => {
+        if(products.some(p => p.categoryId === categoryId)) {
+            alert("Cannot delete category as it is currently assigned to one or more products.");
             return;
         }
         setCategories(prev => prev.filter(c => c.id !== categoryId));
-    }, [products]);
-
-
-    // --- Render ---
-    const filteredProducts = useMemo(() => {
-        return products.filter(p => 
-            (activeCategoryId === 'all' || p.categoryId === activeCategoryId) &&
-            p.name.toLowerCase().includes(searchTerm.toLowerCase())
-        );
-    }, [activeCategoryId, searchTerm, products]);
+    };
 
     return (
-        <div className="h-screen w-screen bg-gray-900 flex flex-col font-sans overflow-hidden">
-            <Header 
-                searchTerm={searchTerm} 
-                onSearch={handleSearch} 
-                isOnline={isOnline}
-                onShowOrders={() => setShowOrderHistoryModal(true)}
-                onShowStore={() => setShowStoreModal(true)}
+        <div className="bg-gray-800 text-white h-screen flex flex-col font-sans">
+            <Header
+                onShowOrderHistory={() => setActiveModal('history')}
+                onShowDashboard={() => setActiveModal('dashboard')}
+                onShowStoreManagement={() => setActiveModal('store')}
             />
-            <div className="flex-grow flex p-4 gap-4 overflow-hidden">
-                <main className="flex-[3] flex flex-col bg-gray-800 rounded-lg overflow-hidden">
-                    <CategoryTabs categories={categories} activeCategoryId={activeCategoryId} onSelectCategory={handleSelectCategory} />
-                    <ProductGrid products={filteredProducts} onAddToCart={handleAddToCart} />
-                </main>
-                <aside className="flex-[2] bg-gray-800 rounded-lg flex flex-col">
-                    <OrderSummary items={orderItems} customer={selectedCustomer} subtotal={subtotal} tax={tax} total={total} onUpdateQuantity={handleUpdateQuantity} onClearCart={handleClearCart} onAddCustomer={() => { setIsTransferCustomerFlow(false); setShowCustomerModal(true); }} onCheckout={() => setShowPaymentModal(true)} />
+            <main className="flex-grow flex overflow-hidden">
+                <div className="flex-grow flex flex-col">
+                    <CategoryTabs
+                        categories={categories}
+                        activeCategoryId={activeCategoryId}
+                        onSelectCategory={setActiveCategoryId}
+                    />
+                    <ProductGrid
+                        products={filteredProducts}
+                        onAddToCart={handleAddToCart}
+                    />
+                </div>
+                <aside className="w-1/3 max-w-md bg-gray-900 flex-shrink-0 shadow-2xl">
+                    <OrderSummary
+                        items={orderItems}
+                        customer={currentCustomer}
+                        subtotal={subtotal}
+                        tax={tax}
+                        total={total}
+                        onUpdateQuantity={handleUpdateQuantity}
+                        onClearCart={handleClearCart}
+                        onAddCustomer={() => setActiveModal('customer')}
+                        onCheckout={() => setActiveModal('payment')}
+                    />
                 </aside>
-            </div>
-            
-            {/* --- Modals --- */}
-            {showStoreModal && (
+            </main>
+
+            {activeModal === 'customer' && (
+                <CustomerModal
+                    customers={customers}
+                    onSelectCustomer={handleSelectCustomer}
+                    onClose={() => setActiveModal(null)}
+                />
+            )}
+            {activeModal === 'payment' && (
+                <PaymentModal
+                    total={total}
+                    onCompletePayment={handleCompletePayment}
+                    onClose={() => setActiveModal(null)}
+                />
+            )}
+            {activeModal === 'receipt' && selectedOrderForDetails && (
+                <ReceiptModal
+                    order={selectedOrderForDetails}
+                    onNewSale={handleNewSale}
+                />
+            )}
+            {activeModal === 'history' && (
+                <OrderHistoryModal
+                    orders={completedOrders}
+                    onSelectOrder={handleShowOrderDetails}
+                    onClose={() => setActiveModal(null)}
+                />
+            )}
+             {activeModal === 'details' && selectedOrderForDetails && (
+                <OrderDetailsModal
+                    order={selectedOrderForDetails}
+                    onClose={() => setActiveModal(null)}
+                    onCancelOrder={handleCancelOrder}
+                    onDeleteOrder={handleDeleteOrder}
+                    onEditOrder={handleEditOrder}
+                    onTransferCustomer={() => { alert("Transfer customer feature not implemented."); }}
+                    onSplitOrder={handleSplitOrder}
+                />
+            )}
+            {activeModal === 'dashboard' && (
+                <DashboardModal 
+                    orders={completedOrders}
+                    onClose={() => setActiveModal(null)}
+                />
+            )}
+            {activeModal === 'store' && (
                 <StoreManagementModal
                     products={products}
                     categories={categories}
@@ -372,34 +328,7 @@ const App: React.FC = () => {
                     onDeleteProduct={handleDeleteProduct}
                     onAddOrUpdateCategory={handleAddOrUpdateCategory}
                     onDeleteCategory={handleDeleteCategory}
-                    onClose={() => setShowStoreModal(false)}
-                />
-            )}
-            {showCustomerModal && (
-                <CustomerModal customers={CUSTOMERS} onSelectCustomer={handleSelectCustomer} onClose={() => setShowCustomerModal(false)} />
-            )}
-            {showPaymentModal && (
-                <PaymentModal total={total} onCompletePayment={handleCompletePayment} onClose={() => setShowPaymentModal(false)} />
-            )}
-            {showReceiptModal && completedOrder && (
-                <ReceiptModal order={completedOrder} onNewSale={handleNewSale} />
-            )}
-            {showOrderHistoryModal && (
-                <OrderHistoryModal 
-                    orders={completedOrders}
-                    onSelectOrder={(order) => setSelectedOrderForDetails(order)}
-                    onClose={() => setShowOrderHistoryModal(false)}
-                />
-            )}
-            {selectedOrderForDetails && (
-                <OrderDetailsModal
-                    order={selectedOrderForDetails}
-                    onClose={() => setSelectedOrderForDetails(null)}
-                    onCancelOrder={handleCancelOrder}
-                    onDeleteOrder={handleDeleteOrder}
-                    onEditOrder={handleEditOrder}
-                    onTransferCustomer={handleTransferCustomerRequest}
-                    onSplitOrder={handleSplitOrder}
+                    onClose={() => setActiveModal(null)}
                 />
             )}
         </div>

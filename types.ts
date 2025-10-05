@@ -1,4 +1,3 @@
-
 // FIX: Removed self-import of types which was causing declaration conflicts.
 
 export interface Category {
@@ -25,6 +24,7 @@ export interface Customer {
   name: string;
   email: string;
   loyaltyPoints: number;
+  isTaxExempt: boolean;
 }
 
 export interface CompletedOrder {

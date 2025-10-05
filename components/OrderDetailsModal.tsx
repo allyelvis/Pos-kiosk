@@ -23,12 +23,14 @@ const OrderSplitter: React.FC<{ order: CompletedOrder; onSplit: (items: OrderIte
         });
     };
 
+    // FIX: Refactored to use Object.keys to avoid a TypeScript error where Object.entries
+    // can return values of type `unknown`, preventing numeric comparison.
     const itemsToSplit = useMemo(() => {
-        return Object.entries(splitQuantities)
-            .filter(([, qty]) => qty > 0)
-            .map(([itemId, quantity]) => {
+        return Object.keys(splitQuantities)
+            .filter(itemId => splitQuantities[itemId] > 0)
+            .map(itemId => {
                 const originalItem = order.items.find(i => i.id === itemId)!;
-                return { ...originalItem, quantity };
+                return { ...originalItem, quantity: splitQuantities[itemId] };
             });
     }, [splitQuantities, order.items]);
 

@@ -1,4 +1,3 @@
-
 import { Category, Product, Customer } from './types';
 
 export const CATEGORIES: Category[] = [
@@ -25,10 +24,10 @@ export const PRODUCTS: Product[] = [
 ];
 
 export const CUSTOMERS: Customer[] = [
-  { id: 'c1', name: 'Alice Johnson', email: 'alice@example.com', loyaltyPoints: 1250 },
-  { id: 'c2', name: 'Bob Williams', email: 'bob@example.com', loyaltyPoints: 780 },
-  { id: 'c3', name: 'Charlie Brown', email: 'charlie@example.com', loyaltyPoints: 2400 },
-  { id: 'c4', name: 'Diana Prince', email: 'diana@example.com', loyaltyPoints: 500 },
+  { id: 'c1', name: 'Alice Johnson', email: 'alice@example.com', loyaltyPoints: 1250, isTaxExempt: false },
+  { id: 'c2', name: 'Bob Williams', email: 'bob@example.com', loyaltyPoints: 780, isTaxExempt: false },
+  { id: 'c3', name: 'Charlie Brown', email: 'charlie@example.com', loyaltyPoints: 2400, isTaxExempt: true },
+  { id: 'c4', name: 'Diana Prince', email: 'diana@example.com', loyaltyPoints: 500, isTaxExempt: false },
 ];
 
 export const TAX_RATE = 0.08; // 8%

@@ -1,4 +1,3 @@
-
 import React from 'react';
 import type { CompletedOrder } from '../types';
 
@@ -6,6 +5,13 @@ interface ReceiptModalProps {
     order: CompletedOrder;
     onNewSale: () => void;
 }
+
+const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat(navigator.language || 'en-US', {
+        style: 'currency',
+        currency: 'USD',
+    }).format(amount);
+};
 
 const ReceiptModal: React.FC<ReceiptModalProps> = ({ order, onNewSale }) => {
     return (
@@ -29,17 +35,17 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ order, onNewSale }) => {
                         <div key={item.id} className="flex justify-between text-sm mb-1">
                             <div className="flex-grow">
                                 <p>{item.name}</p>
-                                <p className="pl-2 text-xs text-gray-600">{item.quantity} @ ${item.price.toFixed(2)}</p>
+                                <p className="pl-2 text-xs text-gray-600">{item.quantity} @ {formatCurrency(item.price)}</p>
                             </div>
-                            <p className="flex-shrink-0">${(item.quantity * item.price).toFixed(2)}</p>
+                            <p className="flex-shrink-0">{formatCurrency(item.quantity * item.price)}</p>
                         </div>
                     ))}
                 </div>
 
                 <div className="p-6 border-t border-dashed border-gray-400 text-sm">
-                    <div className="flex justify-between"><p>Subtotal:</p><p>${order.subtotal.toFixed(2)}</p></div>
-                    <div className="flex justify-between"><p>Tax:</p><p>${order.tax.toFixed(2)}</p></div>
-                    <div className="flex justify-between font-bold text-lg mt-2 pt-2 border-t border-gray-300"><p>Total:</p><p>${order.total.toFixed(2)}</p></div>
+                    <div className="flex justify-between"><p>Subtotal:</p><p>{formatCurrency(order.subtotal)}</p></div>
+                    <div className="flex justify-between"><p>Tax:</p><p>{formatCurrency(order.tax)}</p></div>
+                    <div className="flex justify-between font-bold text-lg mt-2 pt-2 border-t border-gray-300"><p>Total:</p><p>{formatCurrency(order.total)}</p></div>
                     <div className="flex justify-between mt-1"><p>Paid by:</p><p>{order.paymentMethod}</p></div>
                 </div>
 

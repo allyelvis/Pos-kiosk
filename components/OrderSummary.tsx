@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import type { OrderItem, Customer } from '../types';
+// FIX: Corrected icon import path
 import { PlusIcon, MinusIcon, TrashIcon, UserIcon, CreditCardIcon } from './icons';
 
 interface OrderSummaryProps {
@@ -13,6 +14,13 @@ interface OrderSummaryProps {
     onAddCustomer: () => void;
     onCheckout: () => void;
 }
+
+const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat(navigator.language || 'en-US', {
+        style: 'currency',
+        currency: 'USD',
+    }).format(amount);
+};
 
 // Sub-component for each item in the order list for better state management
 const OrderItemRow: React.FC<{
@@ -56,7 +64,7 @@ const OrderItemRow: React.FC<{
         <div className="flex items-center justify-between mb-3 bg-gray-700 p-2 rounded-md">
             <div className="flex-grow w-0"> {/* Add w-0 to help truncation */}
                 <p className="font-semibold truncate" title={item.name}>{item.name}</p>
-                <p className="text-sm text-gray-400">${item.price.toFixed(2)}</p>
+                <p className="text-sm text-gray-400">{formatCurrency(item.price)}</p>
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
                 <button 
@@ -85,7 +93,7 @@ const OrderItemRow: React.FC<{
                     <PlusIcon className="w-4 h-4"/>
                 </button>
             </div>
-            <p className="w-20 text-right font-semibold flex-shrink-0">${(item.price * item.quantity).toFixed(2)}</p>
+            <p className="w-20 text-right font-semibold flex-shrink-0">{formatCurrency(item.price * item.quantity)}</p>
         </div>
     );
 };
@@ -106,7 +114,14 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
             <div className="flex justify-between items-center p-3 bg-gray-900 rounded-lg mb-4">
                  {customer ? (
                     <div>
-                        <p className="font-semibold">{customer.name}</p>
+                        <div className="flex items-center gap-2">
+                            <p className="font-semibold">{customer.name}</p>
+                            {customer.isTaxExempt && (
+                                <span className="text-xs font-bold bg-blue-500 text-white px-2 py-0.5 rounded-full">
+                                    TAX EXEMPT
+                                </span>
+                            )}
+                        </div>
                         <p className="text-sm text-gray-400">{customer.email}</p>
                     </div>
                 ) : (
@@ -133,16 +148,16 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
                 <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                         <span className="text-gray-400">Subtotal</span>
-                        <span>${subtotal.toFixed(2)}</span>
+                        <span>{formatCurrency(subtotal)}</span>
                     </div>
                     <div className="flex justify-between">
-                        <span className="text-gray-400">Tax</span>
-                        <span>${tax.toFixed(2)}</span>
+                        <span className="text-gray-400">Tax {customer?.isTaxExempt && '(Exempt)'}</span>
+                        <span>{formatCurrency(tax)}</span>
                     </div>
                 </div>
                 <div className="flex justify-between items-baseline mt-4 pt-4 border-t border-gray-600">
                     <span className="text-2xl font-bold">Total</span>
-                    <span className="text-3xl font-bold">${total.toFixed(2)}</span>
+                    <span className="text-3xl font-bold">{formatCurrency(total)}</span>
                 </div>
                 <button 
                     onClick={onCheckout}
