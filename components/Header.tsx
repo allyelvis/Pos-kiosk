@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { SearchIcon, CloudIcon, ClipboardListIcon } from './icons';
+import { SearchIcon, CloudIcon, ClipboardListIcon, BuildingStorefrontIcon } from './icons';
 
 const Clock: React.FC = () => {
     const [time, setTime] = useState(new Date());
@@ -17,9 +17,10 @@ interface HeaderProps {
     onSearch: (term: string) => void;
     isOnline: boolean;
     onShowOrders: () => void;
+    onShowStore: () => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ searchTerm, onSearch, isOnline, onShowOrders }) => {
+const Header: React.FC<HeaderProps> = ({ searchTerm, onSearch, isOnline, onShowOrders, onShowStore }) => {
     return (
         <header className="flex items-center justify-between p-4 bg-gray-800 text-white shadow-md flex-shrink-0">
             <div className="flex items-center gap-3">
@@ -42,6 +43,10 @@ const Header: React.FC<HeaderProps> = ({ searchTerm, onSearch, isOnline, onShowO
             </div>
 
             <div className="flex items-center gap-6">
+                 <button onClick={onShowStore} className="flex items-center gap-2 text-gray-300 hover:text-white transition-colors p-2 rounded-md hover:bg-gray-700">
+                    <BuildingStorefrontIcon className="w-6 h-6" />
+                    <span className="text-sm font-medium">Store</span>
+                </button>
                  <button onClick={onShowOrders} className="flex items-center gap-2 text-gray-300 hover:text-white transition-colors p-2 rounded-md hover:bg-gray-700">
                     <ClipboardListIcon className="w-6 h-6" />
                     <span className="text-sm font-medium">Orders</span>

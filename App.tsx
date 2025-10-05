@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
-import { CATEGORIES, PRODUCTS as MOCK_PRODUCTS, TAX_RATE, CUSTOMERS } from './constants';
+import { CATEGORIES as MOCK_CATEGORIES, PRODUCTS as MOCK_PRODUCTS, TAX_RATE, CUSTOMERS } from './constants';
 import type { Product, OrderItem, Customer, CompletedOrder, Category } from './types';
 import Header from './components/Header';
 import CategoryTabs from './components/CategoryTabs';
@@ -10,9 +10,11 @@ import PaymentModal from './components/PaymentModal';
 import ReceiptModal from './components/ReceiptModal';
 import OrderHistoryModal from './components/OrderHistoryModal';
 import OrderDetailsModal from './components/OrderDetailsModal';
+import StoreManagementModal from './components/StoreManagementModal';
 
 const App: React.FC = () => {
     const [products, setProducts] = useState<Product[]>([]);
+    const [categories, setCategories] = useState<Category[]>([]);
     const [activeCategoryId, setActiveCategoryId] = useState<string>('all');
     const [searchTerm, setSearchTerm] = useState<string>('');
     const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
@@ -23,11 +25,12 @@ const App: React.FC = () => {
     const [completedOrder, setCompletedOrder] = useState<CompletedOrder | null>(null);
     const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
 
-    // --- Order Management State ---
+    // --- Order & Store Management State ---
     const [completedOrders, setCompletedOrders] = useState<CompletedOrder[]>([]);
     const [showOrderHistoryModal, setShowOrderHistoryModal] = useState<boolean>(false);
     const [selectedOrderForDetails, setSelectedOrderForDetails] = useState<CompletedOrder | null>(null);
     const [isTransferCustomerFlow, setIsTransferCustomerFlow] = useState<boolean>(false);
+    const [showStoreModal, setShowStoreModal] = useState<boolean>(false);
 
 
     // --- Data Persistence and Offline Mode ---
@@ -37,25 +40,23 @@ const App: React.FC = () => {
         window.addEventListener('online', handleOnline);
         window.addEventListener('offline', handleOffline);
 
-        // Load products
-        const cachedProducts = localStorage.getItem('products');
-        setProducts(cachedProducts ? JSON.parse(cachedProducts) : MOCK_PRODUCTS);
-        if (!cachedProducts) {
-             localStorage.setItem('products', JSON.stringify(MOCK_PRODUCTS));
-        }
+        // Load data from localStorage or fall back to mock data
+        const loadData = <T,>(key: string, mockData: T): T => {
+            const cached = localStorage.getItem(key);
+            if (cached) return JSON.parse(cached);
+            localStorage.setItem(key, JSON.stringify(mockData));
+            return mockData;
+        };
+        
+        setProducts(loadData<Product[]>('products', MOCK_PRODUCTS));
+        setCategories(loadData<Category[]>('categories', MOCK_CATEGORIES));
+        setCompletedOrders(loadData<CompletedOrder[]>('completedOrders', []));
 
-        // Load current order draft
         const cachedOrder = localStorage.getItem('currentOrder');
         if (cachedOrder) {
             const { items, customer } = JSON.parse(cachedOrder);
             setOrderItems(items || []);
             setSelectedCustomer(customer || null);
-        }
-        
-        // Load completed orders history
-        const cachedCompletedOrders = localStorage.getItem('completedOrders');
-        if (cachedCompletedOrders) {
-            setCompletedOrders(JSON.parse(cachedCompletedOrders));
         }
 
         return () => {
@@ -64,18 +65,11 @@ const App: React.FC = () => {
         };
     }, []);
 
-    useEffect(() => {
-        localStorage.setItem('currentOrder', JSON.stringify({ items: orderItems, customer: selectedCustomer }));
-    }, [orderItems, selectedCustomer]);
-    
-    useEffect(() => {
-        localStorage.setItem('completedOrders', JSON.stringify(completedOrders));
-    }, [completedOrders]);
-    
-    useEffect(() => {
-        // Persist product changes (like stock updates)
-        localStorage.setItem('products', JSON.stringify(products));
-    }, [products]);
+    // Persist changes to localStorage
+    useEffect(() => { localStorage.setItem('currentOrder', JSON.stringify({ items: orderItems, customer: selectedCustomer })); }, [orderItems, selectedCustomer]);
+    useEffect(() => { localStorage.setItem('completedOrders', JSON.stringify(completedOrders)); }, [completedOrders]);
+    useEffect(() => { localStorage.setItem('products', JSON.stringify(products)); }, [products]);
+    useEffect(() => { localStorage.setItem('categories', JSON.stringify(categories)); }, [categories]);
 
     const syncOfflineOrders = useCallback(async () => {
         const offlineQueue = JSON.parse(localStorage.getItem('offlineOrderQueue') || '[]');
@@ -164,7 +158,6 @@ const App: React.FC = () => {
             status: 'completed',
         };
 
-        // Update stock levels
         setProducts(currentProducts => {
             const newProducts = [...currentProducts];
             order.items.forEach(item => {
@@ -208,7 +201,6 @@ const App: React.FC = () => {
         }));
 
         if (orderToCancel) {
-            // Return stock
             setProducts(currentProducts => {
                 const newProducts = [...currentProducts];
                 orderToCancel!.items.forEach(item => {
@@ -299,6 +291,49 @@ const App: React.FC = () => {
         
         setSelectedOrderForDetails(updatedOriginalOrder);
     }, []);
+    
+    // --- Store Management Handlers ---
+    const handleAddOrUpdateProduct = useCallback((productData: Product) => {
+        setProducts(prev => {
+            const exists = prev.some(p => p.id === productData.id);
+            if (exists) {
+                return prev.map(p => p.id === productData.id ? productData : p);
+            }
+            return [productData, ...prev];
+        });
+    }, []);
+
+    const handleDeleteProduct = useCallback((productId: string) => {
+        setProducts(prev => prev.filter(p => p.id !== productId));
+    }, []);
+
+    const handleAddOrUpdateCategory = useCallback((categoryData: Category) => {
+        setCategories(prev => {
+            const exists = prev.some(c => c.id === categoryData.id);
+            if (exists) {
+                return prev.map(c => c.id === categoryData.id ? categoryData : c);
+            }
+            // Ensure 'All' category remains first if it exists
+            const allCategory = prev.find(c => c.id === 'all');
+            const otherCategories = prev.filter(c => c.id !== 'all');
+            const newCategories = [categoryData, ...otherCategories];
+            if(allCategory) return [allCategory, ...newCategories];
+            return newCategories;
+        });
+    }, []);
+
+    const handleDeleteCategory = useCallback((categoryId: string) => {
+        const isCategoryInUse = products.some(p => p.categoryId === categoryId);
+        if (isCategoryInUse) {
+            alert("Cannot delete category: it is currently assigned to one or more products.");
+            return;
+        }
+        if (categoryId === 'all') {
+            alert("Cannot delete the 'All' category.");
+            return;
+        }
+        setCategories(prev => prev.filter(c => c.id !== categoryId));
+    }, [products]);
 
 
     // --- Render ---
@@ -316,10 +351,11 @@ const App: React.FC = () => {
                 onSearch={handleSearch} 
                 isOnline={isOnline}
                 onShowOrders={() => setShowOrderHistoryModal(true)}
+                onShowStore={() => setShowStoreModal(true)}
             />
             <div className="flex-grow flex p-4 gap-4 overflow-hidden">
                 <main className="flex-[3] flex flex-col bg-gray-800 rounded-lg overflow-hidden">
-                    <CategoryTabs categories={CATEGORIES} activeCategoryId={activeCategoryId} onSelectCategory={handleSelectCategory} />
+                    <CategoryTabs categories={categories} activeCategoryId={activeCategoryId} onSelectCategory={handleSelectCategory} />
                     <ProductGrid products={filteredProducts} onAddToCart={handleAddToCart} />
                 </main>
                 <aside className="flex-[2] bg-gray-800 rounded-lg flex flex-col">
@@ -328,6 +364,17 @@ const App: React.FC = () => {
             </div>
             
             {/* --- Modals --- */}
+            {showStoreModal && (
+                <StoreManagementModal
+                    products={products}
+                    categories={categories}
+                    onAddOrUpdateProduct={handleAddOrUpdateProduct}
+                    onDeleteProduct={handleDeleteProduct}
+                    onAddOrUpdateCategory={handleAddOrUpdateCategory}
+                    onDeleteCategory={handleDeleteCategory}
+                    onClose={() => setShowStoreModal(false)}
+                />
+            )}
             {showCustomerModal && (
                 <CustomerModal customers={CUSTOMERS} onSelectCustomer={handleSelectCustomer} onClose={() => setShowCustomerModal(false)} />
             )}

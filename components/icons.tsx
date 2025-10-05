@@ -77,3 +77,16 @@ export const ScissorsIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => 
     <path strokeLinecap="round" strokeLinejoin="round" d="M7.848 8.25l1.536.887M7.848 8.25a3 3 0 11-5.196-3 3 3 0 015.196 3zm1.536.887a2.167 2.167 0 01-2.433 2.433 2.167 2.167 0 01-2.433-2.433 2.167 2.167 0 012.433-2.433 2.167 2.167 0 012.433 2.433zM19.5 6a3 3 0 11-5.196-3 3 3 0 015.196 3zM16.353 7.887L14.49 9.25m1.863-1.363a2.167 2.167 0 01-2.433 2.433 2.167 2.167 0 01-2.433-2.433 2.167 2.167 0 012.433-2.433 2.167 2.167 0 012.433 2.433zM13.848 15.75l1.536.887m-1.536-.887a3 3 0 11-5.196 3 3 3 0 015.196-3zm1.536.887a2.167 2.167 0 01-2.433 2.433 2.167 2.167 0 01-2.433-2.433 2.167 2.167 0 012.433-2.433 2.167 2.167 0 012.433 2.433z" />
   </svg>
 );
+
+export const BuildingStorefrontIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 21v-7.5A.75.75 0 0114.25 12h.01a.75.75 0 01.75.75v7.5m0 0H18A2.25 2.25 0 0020.25 18v-7.5a2.25 2.25 0 00-2.25-2.25H15M13.5 21H3.75A2.25 2.25 0 011.5 18.75v-7.5A2.25 2.25 0 013.75 9h7.5a2.25 2.25 0 012.25 2.25v7.5A2.25 2.25 0 0113.5 21m-3.75-9h.01a.75.75 0 01.75.75v7.5a.75.75 0 01-.75.75h-.01a.75.75 0 01-.75-.75v-7.5a.75.75 0 01.75-.75zM9 15v-1.5a.75.75 0 01.75-.75h.01a.75.75 0 01.75.75V15m0 0v1.5a.75.75 0 01-.75.75h-.01a.75.75 0 01-.75-.75V15m-2.25-3V9.75A.75.75 0 017.5 9h.01a.75.75 0 01.75.75v1.5a.75.75 0 01-.75.75h-.01a.75.75 0 01-.75-.75z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3 9.75a.75.75 0 01.75-.75h16.5a.75.75 0 010 1.5H3.75a.75.75 0 01-.75-.75zM3 13.5a.75.75 0 01.75-.75h16.5a.75.75 0 010 1.5H3.75a.75.75 0 01-.75-.75z" />
+    </svg>
+);
+
+export const PhotoIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5z" />
+    </svg>
+);
